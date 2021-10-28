@@ -308,10 +308,12 @@ function zip( $zip_file, $files_to_zip ) {
  * @param array  $args        The command arguments
  * @param array  $assoc_args  The associative arguments
  * @param array  $global_args The global arguments
+ * @param string $literal_args Arguments which should be added to command-line as is (necessary for search-replace w/ table prefix)
+ * @param boolean $launch    Should the command be run in place or as another process (necessary for search-replace)
  *
  * @return
  */
-function runcommand( $command, $args = [], $assoc_args = [], $global_args = [] ) {
+function runcommand( $command, $args = [], $assoc_args = [], $global_args = [], $literal_args = '', $launch = false ) {
 	$assoc_args = array_merge( $assoc_args, $global_args );
 
 	$transformed_assoc_args = [];
@@ -323,9 +325,9 @@ function runcommand( $command, $args = [], $assoc_args = [], $global_args = [] )
 
 	$options = [
 		'return'     => 'all',
-		'launch'     => false,
+		'launch'     => $launch,
 		'exit_error' => false,
 	];
 
-	return \WP_CLI::runcommand( sprintf( '%s %s', $command, $params ), $options );
+	return \WP_CLI::runcommand( sprintf( '%s %s %s', $command, $params, $literal_args ), $options );
 }
