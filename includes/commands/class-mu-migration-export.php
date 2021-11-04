@@ -372,7 +372,7 @@ class ExportCommand extends MUMigrationBase {
 	 *
 	 *      wp mu-migration export all site.zip
 	 *
-	 * @synopsis [<zipfile>] [--blog_id=<blog_id>] [--tables=<table_list>] [--non-default-tables=<table_list>] [--plugins] [--themes] [--uploads] [--verbose]
+	 * @synopsis [<zipfile>] [--blog_id=<blog_id>] [--tables=<table_list>] [--non-default-tables=<table_list>] [--plugins] [--themes] [--uploads] [--verbose] [--override]
 	 *
 	 * @param array $args
 	 * @param array $assoc_args
@@ -418,6 +418,7 @@ class ExportCommand extends MUMigrationBase {
 				'blog_id'            => false,
 				'tables'             => '',
 				'non-default-tables' => '',
+				'override'           => false,
 			),
 			$assoc_args
 		);
@@ -427,6 +428,12 @@ class ExportCommand extends MUMigrationBase {
 		$include_plugins = isset( $this->assoc_args['plugins'] ) ? true : false;
 		$include_themes  = isset( $this->assoc_args['themes'] ) ? true : false;
 		$include_uploads = isset( $this->assoc_args['uploads'] ) ? true : false;
+
+		if ( is_multisite() && $site_data['blog_id'] == 1 && $include_uploads && ! $this->assoc_args['override'] ) {
+			\WP_CLI::error( __( 'This program needs modification to export the root site of a multisite installation.'
+			                     . ' Currently it will export the entire uploads directory tree. We don\'t want that.' 
+			                     . ' If you wish to continue anyway run this again with the \'--override\' flag set on the command-line.', 'mu-migration' ) );
+		}
 
 		$users_assoc_args  = array();
 		$tables_assoc_args = array(
@@ -479,7 +486,7 @@ class ExportCommand extends MUMigrationBase {
 		if ( $include_themes ) {
 			$theme_dir = get_template_directory();
 			$files_to_zip[ 'wp-content/themes/' . basename( $theme_dir ) ] = $theme_dir;
-			if ( get_template_directory() !== get_stylesheet_directory() ) {
+			if ( is_child_theme() ) {
 				$child_theme_dir = get_stylesheet_directory();
 				$files_to_zip[ 'wp-content/themes/' . basename( $child_theme_dir ) ] = $child_theme_dir;
 			}
@@ -488,6 +495,11 @@ class ExportCommand extends MUMigrationBase {
 		if ( $include_uploads ) {
 			$upload_dir = wp_upload_dir();
 			$files_to_zip['wp-content/uploads'] = $upload_dir['basedir'];
+			$gf_uploads_dir = str_replace('uploads', 'gf-uploads', $upload_dir['basedir']);
+			$gf_uploads_glob = glob( $gf_uploads_dir );
+			if ( ! empty( $gf_uploads_glob ) ) {
+				$files_to_zip['wp-content/gf-uploads'] = $gf_uploads_dir;
+			}
 		}
 
 		try {
